@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Finance tracker</title>
+<style>
+  :root { --in: #1b7f4b; --out: #a62a2a; --line: #d8d8d8; --ink: #1c1c1c; }
+  body { font: 16px/1.5 system-ui, sans-serif; color: var(--ink);
+         max-width: 54rem; margin: 2rem auto; padding: 0 1rem; }
+  h1 { margin-bottom: 0; }
+  h2 { margin-top: 2rem; font-size: 1.1rem; text-transform: uppercase;
+       letter-spacing: .06em; color: #555; }
+  .note { color: #666; font-size: .9rem; }
+  .error { background: #fdecec; border: 1px solid var(--out); color: var(--out);
+           padding: .6rem .8rem; border-radius: 4px; }
+  .totals { display: flex; gap: 2rem; flex-wrap: wrap; }
+  .totals div { display: flex; flex-direction: column; }
+  .totals span { font-size: .85rem; color: #666; }
+  .totals strong { font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+  .in { color: var(--in); } .out { color: var(--out); }
+  form { display: flex; gap: .6rem; flex-wrap: wrap; align-items: flex-end; }
+  label { display: flex; flex-direction: column; font-size: .85rem; color: #666; }
+  input, select, button { font: inherit; padding: .4rem; border: 1px solid var(--line);
+                          border-radius: 4px; background: #fff; }
+  button { background: var(--ink); color: #fff; border-color: var(--ink); cursor: pointer; }
+  table { border-collapse: collapse; width: 100%; margin-top: .5rem; }
+  th, td { text-align: left; padding: .45rem .5rem; border-bottom: 1px solid var(--line); }
+  th { font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; color: #666; }
+  td.amount { text-align: right; font-variant-numeric: tabular-nums; }
+  .bar { background: #eee; border-radius: 3px; height: .55rem; width: 8rem; }
+  .bar div { height: 100%; border-radius: 3px; background: var(--in); }
+  .bar.over div { background: var(--out); }
+  .empty { color: #666; font-style: italic; }
+</style>
+</head>
+<body>
+
+<h1>Finance tracker</h1>
+<p class="note">Saved on this computer only. No accounts, no bank connection &mdash;
+  use made-up figures.</p>
+
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+
+<form method="get" action="/">
+  <label>Month
+    <input type="month" name="month" value="{{ month }}">
+  </label>
+  <button type="submit">Show</button>
+</form>
+
+<h2>{{ month }}</h2>
+<div class="totals">
+  <div><span>Income</span><strong class="in">{{ total_income|money }}</strong></div>
+  <div><span>Expenses</span><strong class="out">{{ total_expenses|money }}</strong></div>
+  <div><span>Balance</span>
+    <strong class="{{ 'out' if balance < 0 else 'in' }}">{{ balance|money }}</strong></div>
+</div>
+<p class="note">Balance across every month recorded: {{ all_time_balance|money }}</p>
+
+<h2>Record income or an expense</h2>
+<form method="post" action="/transactions">
+  <input type="hidden" name="month" value="{{ month }}">
+  <label>Kind
+    <select name="kind">
+      <option value="{{ expense_kind }}">Expense</option>
+      <option value="{{ income_kind }}">Income</option>
+    </select>
+  </label>
+  <label>Amount
+    <input name="amount" placeholder="45.50" inputmode="decimal" required>
+  </label>
+  <label>Category
+    <select name="category">
+      {% for category in categories %}<option>{{ category }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>Description
+    <input name="description" placeholder="groceries">
+  </label>
+  <label>Date
+    <input type="date" name="date" value="{{ today }}">
+  </label>
+  <button type="submit">Record it</button>
+</form>
+
+<h2>Budgets for {{ month }}</h2>
+{% if budget_lines %}
+<table>
+  <tr><th>Category</th><th>Budget</th><th>Spent</th><th>Left</th><th>Used</th><th></th></tr>
+  {% for line in budget_lines %}
+  <tr>
+    <td>{{ line.category }}</td>
+    <td class="amount">{{ line.limit|money }}</td>
+    <td class="amount">{{ line.spent|money }}</td>
+    <td class="amount {{ 'out' if line.is_over else '' }}">{{ line.remaining|money }}</td>
+    <td class="amount">{{ line.percent_used }}%</td>
+    <td>
+      <div class="bar {{ 'over' if line.is_over else '' }}">
+        <div style="width: {{ [line.percent_used, 100]|min }}%"></div>
+      </div>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="empty">No budgets set yet.</p>
+{% endif %}
+
+<form method="post" action="/budgets">
+  <input type="hidden" name="month" value="{{ month }}">
+  <label>Category
+    <select name="category">
+      {% for category in categories %}<option>{{ category }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>Monthly budget
+    <input name="amount" placeholder="400.00" inputmode="decimal" required>
+  </label>
+  <button type="submit">Set budget</button>
+</form>
+
+<h2>All transactions</h2>
+{% if transactions %}
+<table>
+  <tr><th>Date</th><th>Category</th><th>Description</th><th class="amount">Amount</th></tr>
+  {% for transaction in transactions %}
+  <tr>
+    <td>{{ transaction.date }}</td>
+    <td>{{ transaction.category }}</td>
+    <td>{{ transaction.description }}</td>
+    <td class="amount {{ 'in' if transaction.kind == income_kind else 'out' }}">
+      {{ transaction.signed_amount|money }}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="empty">Nothing recorded yet.</p>
+{% endif %}
+
+</body>
+</html>
