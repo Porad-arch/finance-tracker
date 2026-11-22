@@ -1,0 +1,13 @@
+# Caches and local clutter. This repository is public, so keep it clean.
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+.DS_Store
+
+# The local save file holds whatever the person typed in. Never commit it.
+data.json
+*.data.json
+
+# Session transcripts must never be committed.
+*.jsonl
